@@ -36,9 +36,8 @@ services:
       - VIKUNJA_SERVICE_FRONTENDURL=http://localhost:8082
       - VIKUNJA_SERVICE_ENABLEREGISTRATION=true
     volumes:
-      - vikunja-data:/app/data
-      - vikunja-files:/app/files
-    user: "root"
+      - ./data:/app/data
+      - ./files:/app/files
     restart: unless-stopped
     container_name: advanced-todo-app
     networks:

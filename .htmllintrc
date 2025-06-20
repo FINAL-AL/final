@@ -1,0 +1,16 @@
+{
+  "line-end-style": false,
+  "indent-style": "spaces",
+  "indent-width": 2,
+  "attr-bans": [],
+  "attr-name-style": "lowercase",
+  "doctype-first": false,
+  "doctype-html5": false,
+  "fig-req-figcaption": false,
+  "head-req-title": false,
+  "html-req-lang": false,
+  "id-class-style": false,
+  "img-req-alt": false,
+  "tag-bans": [],
+  "tag-close": false
+} 

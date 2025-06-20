@@ -1,4 +1,4 @@
-name: Deploy Lab 12 Applications
+name: CI - Build, Test, and Push Docker Image
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build-and-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
     
     steps:
@@ -18,117 +18,56 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Login to Docker Hub
-      if: github.event_name == 'push'
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Build and push profile app
-      if: github.event_name == 'push'
+    - name: Build and push profile app to Docker Hub
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: docker/build-push-action@v5
       with:
         context: .
+        file: ./Dockerfile
         push: true
         tags: ${{ secrets.DOCKERHUB_USERNAME }}/rushford-profile:latest
         platforms: linux/amd64,linux/arm64
-
-    - name: Build and test locally
+        
+    - name: Build and test applications locally
       run: |
-        echo "Building applications locally for testing..."
+        echo "Building all applications from docker-compose.yml for testing..."
         docker compose build
         
-    - name: Test applications
+    - name: Run local tests
       run: |
-        echo "Starting applications for testing..."
+        echo "Starting applications for local testing..."
         docker compose up -d
+        
+        echo "Waiting 30 seconds for services to start..."
         sleep 30
         
-        echo "Testing profile application..."
-        curl -f http://localhost:8080 || exit 1
+        echo "--- Testing Profile App (localhost:8080) ---"
+        curl -f http://localhost:8080 || (docker compose logs && exit 1)
         
-        echo "Testing todo application..."
-        curl -f http://localhost:8081 || exit 1
+        echo "--- Testing Todo App (localhost:8081) ---"
+        curl -f http://localhost:8081 || (docker compose logs && exit 1)
+
+        echo "--- Testing Advanced Todo App (localhost:8082) ---"
+        curl -f http://localhost:8082 || (docker compose logs && exit 1)
         
-        echo "Stopping test containers..."
-        docker compose down
+        echo "All local tests passed!"
 
-    - name: Deploy to server
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SERVER_SSH_KEY }}
-        script: |
-          # Set project directory
-          PROJECT_DIR="/root/final"
-
-          # Ensure git is installed
-          if ! command -v git &> /dev/null; then
-            echo "git could not be found, installing..."
-            sudo yum install -y git
-          fi
-
-          # Ensure project directory exists, clone or pull
-          if [ ! -d "$PROJECT_DIR" ]; then
-            echo "Cloning repository..."
-            git clone https://github.com/FINAL-AL/final.git "$PROJECT_DIR"
-            if [ $? -ne 0 ]; then
-              echo "ERROR: git clone failed. Please check network connectivity to github.com on the server."
-              exit 1
-            fi
-          else
-            echo "Pulling latest changes..."
-            cd "$PROJECT_DIR"
-            git pull origin main
-          fi
-          
-          cd "$PROJECT_DIR"
-
-          # Install docker-compose-plugin manually if not present
-          if ! docker compose version &> /dev/null; then
-            echo "docker-compose-plugin not found, installing manually..."
-            DOCKER_CLI_PLUGINS_DIR="/usr/local/lib/docker/cli-plugins"
-            sudo mkdir -p "$DOCKER_CLI_PLUGINS_DIR"
-            sudo curl -SL https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64 -o "$DOCKER_CLI_PLUGINS_DIR/docker-compose"
-            sudo chmod +x "$DOCKER_CLI_PLUGINS_DIR/docker-compose"
-          fi
-
-          # Deploy with docker compose
-          echo "Deploying applications..."
-          docker compose down
-          docker compose pull
-          docker compose up -d --build
-          docker system prune -f
-          
-          echo "Deployment completed at $(date)"
-          echo "Applications status:"
-          docker compose ps
-
-    - name: Health check
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      run: |
-        echo "Performing health check..."
-        sleep 60
-        
-        echo "Checking Profile App..."
-        curl -f http://39.105.7.134:8080 || echo "Profile app health check failed"
-        
-        echo "Checking Todo App..."
-        curl -f http://39.105.7.134:8081 || echo "Todo app health check failed"
-        
-        echo "Checking Advanced Todo App..."
-        curl -f http://39.105.7.134:8082 || echo "Advanced todo app health check failed"
-
-    - name: Notify deployment status
+    - name: Final Notification
       if: always()
       run: |
         if [ "${{ job.status }}" == "success" ]; then
-          echo "✅ Deployment successful!"
-          echo "🌐 Profile App: http://39.105.7.134:8080"
-          echo "📝 Todo App: http://39.105.7.134:8081"
-          echo "🔧 Advanced Todo: http://39.105.7.134:8082"
+          echo "✅ CI process completed successfully!"
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "Docker image has been pushed to Docker Hub: ${{ secrets.DOCKERHUB_USERNAME }}/rushford-profile:latest"
+            echo "You can now pull this image on your server and run it."
+          fi
         else
-          echo "❌ Deployment failed!"
+          echo "❌ CI process failed!"
+          echo "Please check the logs for errors."
         fi 

@@ -61,8 +61,25 @@ jobs:
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SERVER_SSH_KEY }}
         script: |
-          cd /root/lab12-final-project
+          # Ensure project directory exists, clone if not
+          if [ ! -d "/root/final" ]; then
+            echo "Cloning repository..."
+            # Try apt-get, fallback to yum
+            sudo apt-get update && sudo apt-get install -y git || sudo yum install -y git
+            git clone https://github.com/FINAL-AL/final.git /root/final
+          fi
+          
+          cd /root/final
           git pull origin main
+
+          # Install docker-compose-plugin if not present
+          if ! docker compose version &> /dev/null; then
+            echo "docker-compose-plugin not found, installing..."
+            # Try apt-get, fallback to yum
+            sudo apt-get update && sudo apt-get install -y docker-compose-plugin || sudo yum install -y docker-compose-plugin
+          fi
+
+          # Deploy with docker compose
           docker compose down
           docker compose pull
           docker compose up -d --build

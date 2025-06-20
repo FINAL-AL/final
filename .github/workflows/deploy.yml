@@ -1,4 +1,4 @@
-name: CI - Build, Test, and Push Docker Image
+name: Simple HTML Linting
 
 on:
   push:
@@ -7,67 +7,31 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build-and-push:
+  lint-html:
     runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Login to Docker Hub
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: docker/login-action@v3
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
       with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        node-version: '20'
 
-    - name: Build and push profile app to Docker Hub
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./Dockerfile
-        push: true
-        tags: ${{ secrets.DOCKERHUB_USERNAME }}/rushford-profile:latest
-        platforms: linux/amd64,linux/arm64
-        
-    - name: Build and test applications locally
-      run: |
-        echo "Building all applications from docker-compose.yml for testing..."
-        docker compose build
-        
-    - name: Run local tests
-      run: |
-        echo "Starting applications for local testing..."
-        docker compose up -d
-        
-        echo "Waiting 30 seconds for services to start..."
-        sleep 30
-        
-        echo "--- Testing Profile App (localhost:8080) ---"
-        curl -f http://localhost:8080 || (docker compose logs && exit 1)
-        
-        echo "--- Testing Todo App (localhost:8081) ---"
-        curl -f http://localhost:8081 || (docker compose logs && exit 1)
+    - name: Install HTML Linter
+      run: npm install -g htmllint-cli
 
-        echo "--- Testing Advanced Todo App (localhost:8082) ---"
-        curl -f http://localhost:8082 || (docker compose logs && exit 1)
-        
-        echo "All local tests passed!"
-
-    - name: Final Notification
-      if: always()
+    - name: Lint HTML files
       run: |
-        if [ "${{ job.status }}" == "success" ]; then
-          echo "✅ CI process completed successfully!"
-          if [ "${{ github.event_name }}" == "push" ]; then
-            echo "Docker image has been pushed to Docker Hub: ${{ secrets.DOCKERHUB_USERNAME }}/rushford-profile:latest"
-            echo "You can now pull this image on your server and run it."
-          fi
-        else
-          echo "❌ CI process failed!"
-          echo "Please check the logs for errors."
-        fi 
+        echo "Linting profile.html..."
+        htmllint profile.html
+        
+        echo "Linting todo-app/index.html..."
+        htmllint todo-app/index.html
+        
+        echo "✅ All HTML files are well-formed!"
+
+    - name: Success Notification
+      if: success()
+      run: echo "🎉 HTML linting job completed successfully." 

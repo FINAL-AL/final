@@ -3,7 +3,7 @@ FROM nginx:alpine
 
 # Copy HTML files to nginx default directory
 COPY profile.html /usr/share/nginx/html/index.html
-COPY Rushoford.jpg /usr/share/nginx/html/Rushoford.jpg
+COPY Rushford.jpg /usr/share/nginx/html/Rushford.jpg
 
 # Expose port 80
 EXPOSE 80

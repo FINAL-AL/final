@@ -61,25 +61,42 @@ jobs:
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SERVER_SSH_KEY }}
         script: |
-          # Ensure project directory exists, clone if not
-          if [ ! -d "/root/final" ]; then
+          # Set project directory
+          PROJECT_DIR="/root/final"
+
+          # Ensure git is installed
+          if ! command -v git &> /dev/null; then
+            echo "git could not be found, installing..."
+            sudo yum install -y git
+          fi
+
+          # Ensure project directory exists, clone or pull
+          if [ ! -d "$PROJECT_DIR" ]; then
             echo "Cloning repository..."
-            # Try apt-get, fallback to yum
-            sudo apt-get update && sudo apt-get install -y git || sudo yum install -y git
-            git clone https://github.com/FINAL-AL/final.git /root/final
+            git clone https://github.com/FINAL-AL/final.git "$PROJECT_DIR"
+            if [ $? -ne 0 ]; then
+              echo "ERROR: git clone failed. Please check network connectivity to github.com on the server."
+              exit 1
+            fi
+          else
+            echo "Pulling latest changes..."
+            cd "$PROJECT_DIR"
+            git pull origin main
           fi
           
-          cd /root/final
-          git pull origin main
+          cd "$PROJECT_DIR"
 
-          # Install docker-compose-plugin if not present
+          # Install docker-compose-plugin manually if not present
           if ! docker compose version &> /dev/null; then
-            echo "docker-compose-plugin not found, installing..."
-            # Try apt-get, fallback to yum
-            sudo apt-get update && sudo apt-get install -y docker-compose-plugin || sudo yum install -y docker-compose-plugin
+            echo "docker-compose-plugin not found, installing manually..."
+            DOCKER_CLI_PLUGINS_DIR="/usr/local/lib/docker/cli-plugins"
+            sudo mkdir -p "$DOCKER_CLI_PLUGINS_DIR"
+            sudo curl -SL https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64 -o "$DOCKER_CLI_PLUGINS_DIR/docker-compose"
+            sudo chmod +x "$DOCKER_CLI_PLUGINS_DIR/docker-compose"
           fi
 
           # Deploy with docker compose
+          echo "Deploying applications..."
           docker compose down
           docker compose pull
           docker compose up -d --build

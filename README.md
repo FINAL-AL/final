@@ -75,12 +75,16 @@ lab12-final-project/
 ├── Rushoford.jpg            # Personal photo
 ├── Dockerfile               # Docker build configuration
 ├── docker-compose.yml       # Multi-container setup
-├── todo-app/
-│   └── index.html          # Todo application frontend
+├── deploy.sh                # Local deployment script
+├── server-setup.sh          # Server configuration script
+├── SETUP_INSTRUCTIONS.md    # Setup guide
+├── README.md                # Project documentation
+├── .gitignore               # Git ignore rules
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml      # CI/CD pipeline
-└── README.md               # Project documentation
+└── todo-app/
+    └── index.html          # Todo application frontend
 ```
 
 ## Deployment Information

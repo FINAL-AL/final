@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo List - Task Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .todo-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+        .todo-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #333;
+        }
+        .todo-input {
+            border: none;
+            border-bottom: 2px solid #667eea;
+            border-radius: 0;
+            box-shadow: none;
+            padding: 0.75rem 0;
+        }
+        .todo-input:focus {
+            border-bottom: 2px solid #764ba2;
+            box-shadow: none;
+        }
+        .todo-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }
+        .todo-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .todo-item.completed {
+            opacity: 0.6;
+            text-decoration: line-through;
+            border-left-color: #28a745;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 0.5rem 2rem;
+        }
+        .btn-sm {
+            border-radius: 15px;
+        }
+        .priority-high {
+            border-left-color: #dc3545 !important;
+        }
+        .priority-medium {
+            border-left-color: #ffc107 !important;
+        }
+        .priority-low {
+            border-left-color: #28a745 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="todo-container">
+                    <div class="todo-header">
+                        <h1><i class="fas fa-tasks"></i> My Todo List</h1>
+                        <p class="text-muted">Manage your daily tasks efficiently</p>
+                        <small class="text-info">Created by Rushford (Student ID: 20232066)</small>
+                    </div>
+                    
+                    <div class="input-group mb-3">
+                        <input type="text" id="todoInput" class="form-control todo-input" 
+                               placeholder="Enter new todo item..." />
+                        <select id="prioritySelect" class="form-select" style="max-width: 120px;">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="addTodo()">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <span class="badge bg-primary">Total: <span id="totalCount">0</span></span>
+                        <span class="badge bg-success">Completed: <span id="completedCount">0</span></span>
+                        <span class="badge bg-warning">Pending: <span id="pendingCount">0</span></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="btn-group w-100" role="group">
+                            <button class="btn btn-outline-primary btn-sm" onclick="filterTodos('all')">All</button>
+                            <button class="btn btn-outline-warning btn-sm" onclick="filterTodos('pending')">Pending</button>
+                            <button class="btn btn-outline-success btn-sm" onclick="filterTodos('completed')">Completed</button>
+                        </div>
+                    </div>
+                    
+                    <div id="todoList">
+                        <!-- Todo items will be displayed here -->
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button class="btn btn-outline-danger btn-sm" onclick="clearCompleted()">
+                            <i class="fas fa-trash"></i> Clear Completed
+                        </button>
+                        <button class="btn btn-outline-warning btn-sm ms-2" onclick="clearAll()">
+                            <i class="fas fa-broom"></i> Clear All
+                        </button>
+                        <button class="btn btn-outline-info btn-sm ms-2" onclick="exportTodos()">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let todos = JSON.parse(localStorage.getItem('todos')) || [];
+        let todoIdCounter = todos.length > 0 ? Math.max(...todos.map(t => t.id)) + 1 : 1;
+        let currentFilter = 'all';
+
+        function saveTodos() {
+            localStorage.setItem('todos', JSON.stringify(todos));
+        }
+
+        function addTodo() {
+            const input = document.getElementById('todoInput');
+            const priority = document.getElementById('prioritySelect').value;
+            const text = input.value.trim();
+            
+            if (text === '') {
+                alert('Please enter todo item content!');
+                return;
+            }
+            
+            const newTodo = {
+                id: todoIdCounter++,
+                text: text,
+                completed: false,
+                priority: priority,
+                createdAt: new Date().toLocaleString('en-US'),
+                completedAt: null
+            };
+            
+            todos.unshift(newTodo);
+            input.value = '';
+            saveTodos();
+            renderTodos();
+        }
+
+        function toggleTodo(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.completed = !todo.completed;
+                todo.completedAt = todo.completed ? new Date().toLocaleString('en-US') : null;
+                saveTodos();
+                renderTodos();
+            }
+        }
+
+        function deleteTodo(id) {
+            if (confirm('Are you sure you want to delete this todo item?')) {
+                todos = todos.filter(t => t.id !== id);
+                saveTodos();
+                renderTodos();
+            }
+        }
+
+        function editTodo(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                const newText = prompt('Edit todo item:', todo.text);
+                if (newText && newText.trim() !== '') {
+                    todo.text = newText.trim();
+                    saveTodos();
+                    renderTodos();
+                }
+            }
+        }
+
+        function clearCompleted() {
+            if (confirm('Are you sure you want to clear all completed items?')) {
+                todos = todos.filter(t => !t.completed);
+                saveTodos();
+                renderTodos();
+            }
+        }
+
+        function clearAll() {
+            if (confirm('Are you sure you want to clear all todo items?')) {
+                todos = [];
+                saveTodos();
+                renderTodos();
+            }
+        }
+
+        function filterTodos(filter) {
+            currentFilter = filter;
+            renderTodos();
+            
+            // Update active filter button
+            document.querySelectorAll('.btn-group button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        function exportTodos() {
+            const dataStr = JSON.stringify(todos, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'todos-' + new Date().toISOString().slice(0,10) + '.json';
+            link.click();
+        }
+
+        function getPriorityIcon(priority) {
+            switch(priority) {
+                case 'high': return '<i class="fas fa-exclamation-triangle text-danger"></i>';
+                case 'medium': return '<i class="fas fa-minus text-warning"></i>';
+                case 'low': return '<i class="fas fa-arrow-down text-success"></i>';
+                default: return '';
+            }
+        }
+
+        function renderTodos() {
+            const todoList = document.getElementById('todoList');
+            
+            let filteredTodos = todos;
+            if (currentFilter === 'completed') {
+                filteredTodos = todos.filter(t => t.completed);
+            } else if (currentFilter === 'pending') {
+                filteredTodos = todos.filter(t => !t.completed);
+            }
+            
+            if (filteredTodos.length === 0) {
+                const emptyMessage = currentFilter === 'all' ? 
+                    'No todo items<br><small>Add some tasks to start managing your time!</small>' :
+                    `No ${currentFilter} items<br><small>Try a different filter or add new tasks!</small>`;
+                todoList.innerHTML = `<div class="text-center text-muted py-4"><i class="fas fa-clipboard-list fa-3x mb-3"></i><br>${emptyMessage}</div>`;
+            } else {
+                todoList.innerHTML = filteredTodos.map(todo => `
+                    <div class="todo-item ${todo.completed ? 'completed' : ''} priority-${todo.priority}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center flex-grow-1">
+                                <input type="checkbox" class="form-check-input me-3" 
+                                       ${todo.completed ? 'checked' : ''} 
+                                       onchange="toggleTodo(${todo.id})">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center">
+                                        ${getPriorityIcon(todo.priority)}
+                                        <span class="ms-2 ${todo.completed ? 'text-muted' : ''}">${todo.text}</span>
+                                    </div>
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock"></i> Created: ${todo.createdAt}
+                                        ${todo.completedAt ? `<br><i class="fas fa-check"></i> Completed: ${todo.completedAt}` : ''}
+                                    </small>
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn btn-outline-primary btn-sm me-1" onclick="editTodo(${todo.id})" ${todo.completed ? 'disabled' : ''}>
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" onclick="deleteTodo(${todo.id})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            updateCounts();
+        }
+
+        function updateCounts() {
+            const total = todos.length;
+            const completed = todos.filter(t => t.completed).length;
+            const pending = total - completed;
+            
+            document.getElementById('totalCount').textContent = total;
+            document.getElementById('completedCount').textContent = completed;
+            document.getElementById('pendingCount').textContent = pending;
+        }
+
+        // Add todo on Enter key press
+        document.getElementById('todoInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addTodo();
+            }
+        });
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            renderTodos();
+            
+            // Add some sample data (only on first visit)
+            if (todos.length === 0) {
+                todos = [
+                    { 
+                        id: 1, 
+                        text: 'Complete Lab 12 Final Assignment', 
+                        completed: false, 
+                        priority: 'high',
+                        createdAt: new Date().toLocaleString('en-US'),
+                        completedAt: null
+                    },
+                    { 
+                        id: 2, 
+                        text: 'Learn Docker and Containerization', 
+                        completed: false, 
+                        priority: 'medium',
+                        createdAt: new Date().toLocaleString('en-US'),
+                        completedAt: null
+                    },
+                    { 
+                        id: 3, 
+                        text: 'Practice GitHub Actions Workflow', 
+                        completed: true, 
+                        priority: 'low',
+                        createdAt: new Date().toLocaleString('en-US'),
+                        completedAt: new Date().toLocaleString('en-US')
+                    }
+                ];
+                todoIdCounter = 4;
+                saveTodos();
+                renderTodos();
+            }
+        });
+    </script>
+</body>
+</html> 

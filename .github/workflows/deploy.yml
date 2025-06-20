@@ -1,0 +1,100 @@
+name: Deploy Lab 12 Applications
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Docker Hub
+      if: github.event_name == 'push'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and push profile app
+      if: github.event_name == 'push'
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/rushford-profile:latest
+        platforms: linux/amd64,linux/arm64
+
+    - name: Build and test locally
+      run: |
+        echo "Building applications locally for testing..."
+        docker compose build
+        
+    - name: Test applications
+      run: |
+        echo "Starting applications for testing..."
+        docker compose up -d
+        sleep 30
+        
+        echo "Testing profile application..."
+        curl -f http://localhost:8080 || exit 1
+        
+        echo "Testing todo application..."
+        curl -f http://localhost:8081 || exit 1
+        
+        echo "Stopping test containers..."
+        docker compose down
+
+    - name: Deploy to server
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        script: |
+          cd /root/lab12-final-project
+          git pull origin main
+          docker compose down
+          docker compose pull
+          docker compose up -d --build
+          docker system prune -f
+          
+          echo "Deployment completed at $(date)"
+          echo "Applications status:"
+          docker compose ps
+
+    - name: Health check
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      run: |
+        echo "Performing health check..."
+        sleep 60
+        
+        echo "Checking Profile App..."
+        curl -f http://39.105.7.134:8080 || echo "Profile app health check failed"
+        
+        echo "Checking Todo App..."
+        curl -f http://39.105.7.134:8081 || echo "Todo app health check failed"
+        
+        echo "Checking Advanced Todo App..."
+        curl -f http://39.105.7.134:8082 || echo "Advanced todo app health check failed"
+
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ Deployment successful!"
+          echo "🌐 Profile App: http://39.105.7.134:8080"
+          echo "📝 Todo App: http://39.105.7.134:8081"
+          echo "🔧 Advanced Todo: http://39.105.7.134:8082"
+        else
+          echo "❌ Deployment failed!"
+        fi 

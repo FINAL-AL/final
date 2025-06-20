@@ -32,11 +32,11 @@ services:
       - "8082:3456"
     environment:
       - VIKUNJA_DATABASE_TYPE=sqlite
-      - VIKUNJA_DATABASE_PATH=/app/vikunja.db
+      - VIKUNJA_DATABASE_PATH=/app/data/vikunja.db
       - VIKUNJA_SERVICE_FRONTENDURL=http://localhost:8082
       - VIKUNJA_SERVICE_ENABLEREGISTRATION=true
     volumes:
-      - vikunja-data:/app/db
+      - vikunja-data:/app/data
       - vikunja-files:/app/files
     restart: unless-stopped
     container_name: advanced-todo-app

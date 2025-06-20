@@ -38,6 +38,7 @@ services:
     volumes:
       - vikunja-data:/app/data
       - vikunja-files:/app/files
+    user: "root"
     restart: unless-stopped
     container_name: advanced-todo-app
     networks:

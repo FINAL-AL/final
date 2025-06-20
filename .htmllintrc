@@ -1,9 +1,9 @@
 {
   "line-end-style": false,
-  "indent-style": "spaces",
-  "indent-width": 2,
+  "indent-style": false,
+  "indent-width": false,
   "attr-bans": [],
-  "attr-name-style": "lowercase",
+  "attr-name-style": false,
   "doctype-first": false,
   "doctype-html5": false,
   "fig-req-figcaption": false,
@@ -12,5 +12,9 @@
   "id-class-style": false,
   "img-req-alt": false,
   "tag-bans": [],
-  "tag-close": false
+  "tag-close": false,
+  "link-req-noopener": false,
+  "spec-char-escape": false,
+  "line-end-style": false,
+  "line-no-trailing-whitespace": false
 } 
